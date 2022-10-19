@@ -11,15 +11,15 @@ todo:
 
 "use strict";
 
-import { record } from 'rrweb';
-import { v4 as uuidv4 } from 'uuid';
-import config from './config';
+import { record } from "rrweb";
+import { v4 as uuidv4 } from "uuid";
+import config from "./config";
 
 const TTL = 10 * 1000;
 
 export default function start() {
   let initialEventsManager = {};
-  if (!sessionStorage.getItem('sessionId')) {
+  if (!sessionStorage.getItem("sessionId")) {
     setSessionId();
     initialEventsManager = new InitialEventsManager();
   }
@@ -27,11 +27,11 @@ export default function start() {
   record({
     emit(event) {
       switch (initialEventsManager.status) {
-        case 'collecting':
+        case "collecting":
           initialEventsManager.collect(event);
           return;
-        case 'collected':
-          initialEventsManager.sendStartSessionRequest(event.timestamp - 1)
+        case "collected":
+          initialEventsManager.sendStartSessionRequest(event.timestamp - 1);
           initialEventsManager.stampAndSend(event.timestamp - 1);
           break;
       }
@@ -43,18 +43,18 @@ export default function start() {
 }
 
 function setSessionId() {
-  sessionStorage.setItem('sessionId', uuidv4());
+  sessionStorage.setItem("sessionId", uuidv4());
 }
 
 class InitialEventsManager {
   constructor() {
     this.initialEvents = [];
-    this.status = 'collecting';
+    this.status = "collecting";
   }
 
   collect(initialEvent) {
     this.initialEvents.push(initialEvent);
-    if (this.#isDoneCollecting()) this.status = 'collected';
+    if (this.#isDoneCollecting()) this.status = "collected";
   }
 
   #isDoneCollecting() {
@@ -66,12 +66,12 @@ class InitialEventsManager {
 
   sendStartSessionRequest(timestamp) {
     fetch(`${config.endpoint}/start-session`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        sessionId: sessionStorage.getItem('sessionId'),
+        sessionId: sessionStorage.getItem("sessionId"),
         timestamp,
       }),
     });
@@ -82,19 +82,23 @@ class InitialEventsManager {
   }
 
   stampAndSend(timestamp) {
-    this.initialEvents.forEach(initialEvent => send({ ...initialEvent, timestamp }));
-    this.status = 'sent';
+    this.initialEvents.forEach((initialEvent) =>
+      send({ ...initialEvent, timestamp })
+    );
+    this.status = "sent";
   }
 }
 
 function send(event) {
+  let events = [event];
   fetch(`${config.endpoint}/record`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      sessionId: sessionStorage.getItem('sessionId'), event
+      sessionId: sessionStorage.getItem("sessionId"),
+      events,
     }),
   });
   // console.log('sent this:', JSON.stringify({
@@ -103,22 +107,25 @@ function send(event) {
 }
 
 function resetTimeout() {
-  clearTimeout(sessionStorage.getItem('timeoutId'));
-  sessionStorage.setItem('timeoutId', setTimeout(() => {
-    sendEndSessionRequest();
-    sessionStorage.removeItem('sessionId');
-    start();
-  }, TTL));
+  clearTimeout(sessionStorage.getItem("timeoutId"));
+  sessionStorage.setItem(
+    "timeoutId",
+    setTimeout(() => {
+      sendEndSessionRequest();
+      sessionStorage.removeItem("sessionId");
+      start();
+    }, TTL)
+  );
 }
 
 function sendEndSessionRequest() {
   fetch(`${config.endpoint}/end-session`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      sessionId: sessionStorage.getItem('sessionId'),
+      sessionId: sessionStorage.getItem("sessionId"),
       timestamp: Date.now(),
     }),
   });
