@@ -1,6 +1,5 @@
 /*
 todo:
-  - endpoints are hard-coded - change this
   - session end - how to detect closing tab / leaving origin
   - timestamp of session end
     - in case of expiration due to inactivity, should be timestamp of last event, or timestamp or last event plus ttl?
@@ -14,6 +13,7 @@ todo:
 
 import { record } from 'rrweb';
 import { v4 as uuidv4 } from 'uuid';
+import config from './config';
 
 const TTL = 10 * 1000;
 
@@ -65,7 +65,7 @@ class InitialEventsManager {
   }
 
   sendStartSessionRequest(timestamp) {
-    fetch('http://localhost:3001/start-session', {
+    fetch(`${config.endpoint}/start-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -88,7 +88,7 @@ class InitialEventsManager {
 }
 
 function send(event) {
-  fetch('http://localhost:3001/record', {
+  fetch(`${config.endpoint}/record`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -112,7 +112,7 @@ function resetTimeout() {
 }
 
 function sendEndSessionRequest() {
-  fetch('http://localhost:3001/end-session', {
+  fetch(`${config.endpoint}/end-session`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
