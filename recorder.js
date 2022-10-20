@@ -5,83 +5,138 @@ todo:
   - take out console.log / comments
 */
 
-/*
-page loads
-0
-
-timeout
-  delete the session id
-  send batch
-
-on visibility hidden, send the batch
-
-
-two cases: page load vs. timeout
-
-page load
-  if not in session then start session
-  start recorder normally
-    receive event
-      send event to batch manager
-      reset timeout
-timeout
-  end session
-  start recorder in priming mode
-    receive event
-    what mode are we in?
-      priming
-        add event to initial events
-        if initial events are ready, change state to primed
-      primed
-        start session
-        send initial events and event to batch manager
-
-        change state to running
-      running
-        send event to batch manager
-
-timeout
-  delete the session id
-  send batch
- */
-
 "use strict";
 
-import { record as startRecorder } from 'rrweb';
+import { record } from 'rrweb';
 import { v4 as uuidv4 } from "uuid";
 import config from 'config';
 
-function handleEvent(event) {
-  if ()
+// maybe how to handle session will become clearer as we interact with it, i.e. send it, destroy it etc.
+// first lets implement the no timeout path (i.e. the page load path)
+
+// how do all of the classes know about one another?
+// maybe make the agent be the orchestrator? so each class has a reference to the agent and reaches the other classes that way
+
+// methods on an object can signify doing something to the object (e.g. recorder.start) or asking the object to do something (e.g. batcher.handle(event)). both are ok i think
+
+// where should i put the ttl?
+// i feel like it should be in the config...
+// so after we import the config, do we want to keep it there, or put it in the agent?
+// i think it doesn't really matter functionally, but style-wise maybe it's nicer in the agent or a collaborator class e.g. reaper...
+
+// restart is different than start, cause restart implies shut down followed by start...
+// is it ok to use restart when start is the correct thing?
+
+// thing is, restart has start in it...
+
+// you might start the recorder but not get any events... so reaper shouldn't be started until first event...
+// but actually, starting the recorder always triggers an event... so you should start the reaper right away
+// it's also a nice distinction between active and dormant mode.
+
+export default class Agent {
+  constructor() {
+    this.recorder = new Recorder(this);
+    this.batcher = new Batcher();
+    this.reaper = new Reaper(config.MAX_IDLE_TIME);
+  }
+
+  initialize() {
+    this.recorder.startInActiveMode();
+  }
+
+  inSession() {
+    return !!sessionStorage.getItem('sessionId');
+  }
+}
+
+class Recorder {
+  constructor(agent) {
+    this.agent = agent;
+    this.stop = null;
+  }
+
+  startInActiveMode() {
+    this.agent.reaper.start();
+
+    record({
+      emit(event) {
+        this.agent.batcher.handle(event);
+        this.agent.reaper.restart();
+      },
+    });
+  }
+
+  startInDormantMode() {
+
+  }
+}
+
+class Batcher {
+}
+
+class Reaper {
+  constructor(MAX_IDLE_TIME) {
+    this.#MAX_IDLE_TIME = MAX_IDLE_TIME;
+    this.#timeoutId = null;
+  }
+
+  restart() {
+    this.#stop();
+    this.start();
+  }
+
+  #stop() {
+    clearTimeout(this.#timeoutId);
+  }
+
+  start() {
+    this.#timeoutId = setTimeout(this.#kill, MAX_IDLE_TIME);
+  }
+
+  #kill() {
+
+  }
 }
 
 /*
-page loads
-receive event
-are we in session?
-  yes:
-    send event
-    reset inactivity timeout
-  no:
-    has the recorder been primed?
-      yes:
-        start session
-        stamp the initial events
-        send initial events AND event to batch
-        is batch big enough?
-          yes: send
-          no: continue
-      no:
-        collect initial events
+
+two cases: page load vs. timeout
+
+  page load
+    if not in session then start session
+    create active recorder
+      receive event
+        add session id to event
+        send event to batch manager
+        reset timeout
+  timeout
+    end session
+    create dormant recorder
+      receive event
+        what mode are we in?
+          priming
+            add event to initial events
+            if initial events are ready, change state to primed
+          primed
+            start session
+            send initial events and event to batch manager
+            change state to running
+          running
+            add session id to event
+            send event to batch manager
+            reset timeout
 
 timeout
   delete the session id
-  send batch
+  tell batch manager to send batch
+  start a dormant recorder
 
-on visibility hidden, send the batch
+batch manager
+  handle event
+    add event to batch
+    if batch ready then send
+  on visibility hidden, send the batch
 */
-
-
 
 // "use strict";
 
