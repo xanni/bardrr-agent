@@ -1,5 +1,6 @@
 /*
 todo:
+  - make properties private
   - put more configuration (e.g. rrweb options) in configuration file
   - refactor?
   - take out console.log / comments
@@ -35,13 +36,15 @@ import config from 'config';
 
 export default class Agent {
   constructor() {
+    this.sessionInterface = new SessionInterface();
     this.recorder = new Recorder(this);
     this.batcher = new Batcher();
-    this.reaper = new Reaper(config.MAX_IDLE_TIME);
+    this.timer = new Timer(this, config.MAX_IDLE_TIME);
   }
 
   initialize() {
-    this.recorder.startInActiveMode();
+    this.sessionInterface.initialize();
+    this.recorder.start();
   }
 
   inSession() {
@@ -49,33 +52,77 @@ export default class Agent {
   }
 }
 
-class Recorder {
-  constructor(agent) {
-    this.agent = agent;
-    this.stop = null;
+class SessionInterface {
+  initialize() {
+    this.id = sessionStorage.getItem('sessionId') ||
   }
 
-  startInActiveMode() {
-    this.agent.reaper.start();
+  #exists() {
+    return !!sessionStorage.getItem('sessionId');
+  }
 
-    record({
+  #start() {
+
+  }
+
+  #end() {
+
+  }
+}
+
+class Recorder {
+  constructor(agent) {
+    this.#agent = agent;
+    this.#stop = null;
+    this.#status = null;
+  }
+
+  start() {
+    this.agent.timer.start();
+
+    this.#stop = record({
       emit(event) {
         this.agent.batcher.handle(event);
-        this.agent.reaper.restart();
+        this.agent.timer.restart();
       },
     });
   }
 
-  startInDormantMode() {
+  sleep() {
+    this.#stop();
+    this.#startInDormantMode();
+  }
 
+  #startInDormantMode() {
+    this.#status = 'priming';
+
+    this.#stop = record({
+
+    })
   }
 }
+
+/*
+what mode are we in?
+priming
+  add event to initial events
+  if initial events are ready, change state to primed
+primed
+  start session
+  send initial events and event to batch manager
+  change state to running
+running
+  add session id to event
+  send event to batch manager
+  reset timeout
+*/
 
 class Batcher {
 }
 
-class Reaper {
-  constructor(MAX_IDLE_TIME) {
+class Timer {
+  constructor(agent, MAX_IDLE_TIME) {
+    this.#agent = agent;
     this.#MAX_IDLE_TIME = MAX_IDLE_TIME;
     this.#timeoutId = null;
   }
@@ -90,11 +137,11 @@ class Reaper {
   }
 
   start() {
-    this.#timeoutId = setTimeout(this.#kill, MAX_IDLE_TIME);
+    this.#timeoutId = setTimeout(this.#beep, MAX_IDLE_TIME);
   }
 
-  #kill() {
-
+  #beep() {
+    this.agent.recorder.restartInDormantMode();
   }
 }
 
