@@ -4,6 +4,7 @@ todo:
   - put more configuration (e.g. rrweb options) in configuration file
   - refactor?
   - take out console.log / comments
+  - change hardcoded event types
 */
 
 "use strict";
@@ -37,14 +38,14 @@ import config from 'config';
 export default class Agent {
   constructor() {
     this.sessionInterface = new SessionInterface();
-    this.recorder = new Recorder(this);
+    this.metaRecorder = new MetaRecorder(this);
     this.batcher = new Batcher();
     this.timer = new Timer(this, config.MAX_IDLE_TIME);
   }
 
   initialize() {
     this.sessionInterface.initialize();
-    this.recorder.start();
+    this.metaRecorder.start();
   }
 
   inSession() {
@@ -70,37 +71,115 @@ class SessionInterface {
   }
 }
 
+// should i have two classes - a normal/active recorder and a dormant recorder?
+// i don't think so - just have normal/active and dormant modes of one recorder
+// actually maybe I do...
+// seems like lots of properties and methods are specific to dormant recorder, so maybe it merits its own class
+// but then i don't have that nice "sleep" command... but maybe i can call that on a "metarecorder"
+
+/*
+this.#dormantMode = {
+  status: null,
+  initialFullSnapshotEvent: null,
+  initialMetaEvent: null,
+}
+*/
+
+// who should be responsible for starting the timer?
+// I think the recorder.
+// the timer is the time between events, events are received by the recorder, so the recorder should handle the timer
+// i guess metarecorder is ok as well
+
+class MetaRecorder {
+  constructor(agent) {
+    this.agent = agent;
+    this.recorder = new InitiallyActiveRecorder(this);
+  }
+
+  start() {
+    this.recorder.start();
+  }
+
+  sleep() {
+    this.recorder.stop();
+    this.recorder = new InitiallySleepingRecorder(this);
+    this.recorder.start();
+  }
+}
+
 class Recorder {
   constructor(agent) {
-    this.#agent = agent;
-    this.#stop = null;
-    this.#status = null;
+    this.agent = agent;
+    this.stop = null;
+  }
+}
+
+class InitiallyActiveRecorder extends Recorder {
+  constructor(agent) {
+    super(agent);
   }
 
   start() {
     this.agent.timer.start();
 
-    this.#stop = record({
+    this.stop = record({
       emit(event) {
         this.agent.batcher.handle(event);
         this.agent.timer.restart();
       },
     });
   }
+}
 
-  sleep() {
-    this.#stop();
-    this.#startInDormantMode();
+class InitiallySleepingRecorder extends Recorder {
+  constructor(agent) {
+    super(agent);
+    this.isSleeping = null;
+    this.sleepManager = new SleepManager(this);
   }
 
-  #startInDormantMode() {
-    this.#status = 'priming';
+  start() {
+    this.isSleeping = true;
 
-    this.#stop = record({
+    this.stop = record({
+      emit(event) {
+        if (this.status === 'sleeping') {
+          this.sleepManager.handle(event);
+        } else {
 
+        }
+      }
     })
   }
+
 }
+
+class SleepManager {
+  constructor(recorder) {
+    this.recorder = recorder;
+    this.initialEvents = [];
+  }
+
+  handle(event) {
+    this.isTimeToActivate() ? this.activate() : this.collect(event);
+  }
+
+  isTimeToRouse() {
+    return (
+      this.initialEvents.some(({ type }) => type === 2) &&
+      this.initialEvents.some(({ type }) => type === 4)
+    );
+  }
+
+  collect(event) {
+    this.initialEvents.push(event);
+  }
+}
+
+// this.#dormantModeData = {
+//   status: null,
+//   initialEvents: [],
+// };
 
 /*
 what mode are we in?
