@@ -144,7 +144,7 @@ class InitiallyHoardingRecorder extends Recorder {
         if (this.interceptor.isActive) {
           this.interceptor.handle(event);
         } else {
-
+          super.share(event);
         }
       }
     })
@@ -169,9 +169,10 @@ class Interceptor {
   }
 
   hoard(event) {
-    switch (event.type) {
-      case 2: return this.initializingFullSnapshotEvent = event;
-      case 4: return this.initializingMetaEvent = event;
+    if (event.type === 2) {
+      this.initializingFullSnapshotEvent = event;
+    } else {
+      this.initializingMetaEvent = event;
     }
   }
 
@@ -179,8 +180,6 @@ class Interceptor {
     this.firstSessionEvent = event;
     this.stampInitializingEvents(this.firstSessionEvent.timestamp);
     this.shareAll();
-    // send initial events and event to batch manager
-
     this.isActive = false;
   }
 
