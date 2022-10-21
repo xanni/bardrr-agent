@@ -75,7 +75,7 @@ export default class Agent {
   constructor() {
     this.sessionInterface = new SessionInterface();
     this.metaRecorder = new MetaRecorder(this);
-    this.batcher = new Batcher();
+    this.sender = new Sender();
     this.timer = new Timer(this, config.MAX_IDLE_TIME);
   }
 
@@ -140,7 +140,7 @@ class Recorder {
   }
 
   share(event) {
-    this.agent.batcher.handle(event);
+    this.agent.sender.handle(event);
     this.agent.timer.restart();
   }
 }
@@ -205,15 +205,16 @@ class Interceptor {
   }
 }
 
-/*
-what mode are we in?
-running
-  add session id to event
-  send event to batch manager
-  reset timeout
-*/
+class Sender {
+  // add session id to event
+  // send batch on visibility change
+  handle(event) {
 
-class Batcher {
+  }
+
+  package(event) {
+
+  }
 }
 
 class Timer {
