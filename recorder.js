@@ -5,7 +5,10 @@ todo:
   - refactor?
   - take out console.log / comments
   - change hardcoded event types?
-  - do i need to go through the agent? can i just go to what i need directly? for now yes - think of it as a kafka
+  - do i need to go through the agent? can i just go to what i need directly? for now yes - think of it as a kafka. actually no.
+  - change ugly rrweb recorder initialization... maybe wrap it somehow so that the wrapper takes a callback directly
+  - eliminate unnecessary collaborator objects
+  - change agent to orchestrator?
 */
 
 "use strict";
@@ -36,42 +39,6 @@ import config from 'config';
 // but actually, starting the recorder always triggers an event... so you should start the reaper right away
 // it's also a nice distinction between active and dormant mode.
 
-export default class Agent {
-  constructor() {
-    this.sessionInterface = new SessionInterface();
-    this.metaRecorder = new MetaRecorder(this);
-    this.batcher = new Batcher();
-    this.timer = new Timer(this, config.MAX_IDLE_TIME);
-  }
-
-  initialize() {
-    this.sessionInterface.initialize();
-    this.metaRecorder.start();
-  }
-
-  inSession() {
-    return !!sessionStorage.getItem('sessionId');
-  }
-}
-
-class SessionInterface {
-  initialize() {
-    this.id = sessionStorage.getItem('sessionId') ||
-  }
-
-  #exists() {
-    return !!sessionStorage.getItem('sessionId');
-  }
-
-  #start() {
-
-  }
-
-  #end() {
-
-  }
-}
-
 // should i have two classes - a normal/active recorder and a dormant recorder?
 // i don't think so - just have normal/active and dormant modes of one recorder
 // actually maybe I do...
@@ -91,6 +58,64 @@ this.#dormantMode = {
 // the timer is the time between events, events are received by the recorder, so the recorder should handle the timer
 // i guess metarecorder is ok as well
 
+// who should be responsible for adding session id to event?
+// i think the batcher...
+
+// how should the timeout work...
+// the timeout needs to end the session and reset the metarecorder
+// i think those are two different concerns - one is about a session, the other is about a recorder
+
+// calling it a session interface and not a session because when an agent is constructed, the session might not be new - only interface is guaranteed to be new
+
+// should the session be started by the recorder? kinda along the lines of how we decided that the timer should be reset by the recorder...
+// actually maybe it should stay with the agent
+// makes kind of a nice symmetry with handle timeout as well actually
+
+export default class Agent {
+  constructor() {
+    this.sessionInterface = new SessionInterface();
+    this.metaRecorder = new MetaRecorder(this);
+    this.batcher = new Batcher();
+    this.timer = new Timer(this, config.MAX_IDLE_TIME);
+  }
+
+  initialize() {
+    this.sessionInterface.initialize();
+    this.metaRecorder.start();
+  }
+
+  handleTimeout() {
+    this.sessionInterface.endSession();
+    this.metaRecorder.reset();
+  }
+}
+
+class SessionInterface {
+  constructor() {
+    this.SESSION_ID_KEY = 'sessionId';
+  }
+
+  initialize() {
+    if (!this.sessionExists()) startSession();
+  }
+
+  sessionExists() {
+    return !!getSessionId();
+  }
+
+  getSessionId() {
+    return sessionStorage.getItem(this.SESSION_ID_KEY);
+  }
+
+  startSession() {
+    sessionStorage.setItem(this.SESSION_ID_KEY, uuidv4());
+  }
+
+  endSession() {
+    sessionStorage.removeItem('sessionId');
+  }
+}
+
 class MetaRecorder {
   constructor(agent) {
     this.agent = agent;
@@ -101,8 +126,7 @@ class MetaRecorder {
     this.recorder.start();
   }
 
-  // i think this will change
-  sleep() {
+  reset() {
     this.recorder.stop();
     this.recorder = new InitiallyHoardingRecorder(this);
     this.recorder.start();
@@ -127,7 +151,6 @@ class ImmediatelySharingRecorder extends Recorder {
   }
 
   start() {
-    this.agent.timer.start();
     this.stop = record({ emit: super.share });
   }
 }
@@ -155,76 +178,35 @@ class Interceptor {
   constructor(recorder) {
     this.recorder = recorder;
     this.isActive = true;
-    this.initializingFullSnapshotEvent = null;
-    this.initializingMetaEvent = null;
-    this.firstSessionEvent = null;
+    this.events = [];
   }
 
   handle(event) {
-    this.isInitializingEvent() ? this.hoard(event) : this.shutdown(event);
+    this.isInitializingEvent(event) ? this.events.push(event) : this.shutdown(event);
   }
 
   isInitializingEvent({ type }) {
     return [2, 4].includes(type);
   }
 
-  hoard(event) {
-    if (event.type === 2) {
-      this.initializingFullSnapshotEvent = event;
-    } else {
-      this.initializingMetaEvent = event;
-    }
-  }
-
   shutdown(event) {
-    this.firstSessionEvent = event;
-    this.stampInitializingEvents(this.firstSessionEvent.timestamp);
-    this.shareAll();
+    this.recorder.agent.sessionInterface.startSession();
+    this.stamp(this.events, event.timestamp - 1);
+    this.share(...this.events, event);
     this.isActive = false;
   }
 
-  stampInitializingEvents(timestamp) {
-    [
-      this.initializingFullSnapshotEvent,
-      this.initializingMetaEvent,
-    ].forEach(event => event.timestamp = timestamp);
+  stamp(events, timestamp) {
+    events.forEach(event => event.timestamp = timestamp)
   }
 
-  shareAll() {
-    [
-      this.initializingFullSnapshotEvent,
-      this.initializingMetaEvent,
-      this.firstSessionEvent,
-    ].forEach(this.recorder.super.share);
+  share(...events) {
+    events.forEach(this.recorder.share);
   }
 }
-
-class InitializingEvents extends Array {
-  constructor() {
-    super();
-  }
-
-
-
-  stamp(timestamp) {
-    this.forEach(event => event.timestamp = timestamp)
-  }
-}
-
-// this.#dormantModeData = {
-//   status: null,
-//   initialEvents: [],
-// };
 
 /*
 what mode are we in?
-priming
-  add event to initial events
-  if initial events are ready, change state to primed
-primed
-  start session
-  send initial events and event to batch manager
-  change state to running
 running
   add session id to event
   send event to batch manager
@@ -236,26 +218,22 @@ class Batcher {
 
 class Timer {
   constructor(agent, MAX_IDLE_TIME) {
-    this.#agent = agent;
-    this.#MAX_IDLE_TIME = MAX_IDLE_TIME;
-    this.#timeoutId = null;
+    this.agent = agent;
+    this.MAX_IDLE_TIME = MAX_IDLE_TIME;
+    this.timeoutId = null;
   }
 
   restart() {
-    this.#stop();
+    this.stop();
     this.start();
   }
 
-  #stop() {
+  stop() {
     clearTimeout(this.#timeoutId);
   }
 
   start() {
-    this.#timeoutId = setTimeout(this.#beep, MAX_IDLE_TIME);
-  }
-
-  #beep() {
-    this.agent.recorder.restartInDormantMode();
+    this.#timeoutId = setTimeout(this.agent.handleTimeout, MAX_IDLE_TIME);
   }
 }
 
