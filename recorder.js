@@ -26,9 +26,9 @@ import config from './config';
 export default class Agent {
   constructor() {
     this.sessionInterface = new SessionInterface();
+    this.recordingManager = new RecordingManager(this);
     this.sender = new Sender(this);
     this.timer = new Timer(this, config.MAX_IDLE_TIME);
-    this.recordingManager = new RecordingManager(this);
   }
 
   start() {
@@ -44,12 +44,53 @@ export default class Agent {
   }
 }
 
+class SessionInterface {
+  constructor() {
+    this.SESSION_ID_KEY = 'sessionId';
+  }
+
+  start() {
+    if (!this.sessionExists()) this.startSession();
+  }
+
+  sessionExists() {
+    return !!this.getSessionId();
+  }
+
+  getSessionId() {
+    return sessionStorage.getItem(this.SESSION_ID_KEY);
+  }
+
+  startSession() {
+    sessionStorage.setItem(this.SESSION_ID_KEY, uuidv4());
+
+    const resource = `${config.endpoint}/start-session`;
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sessionId: this.getSessionId(),
+        timestamp: Date.now(),
+      })
+    };
+
+    // todo
+    // fetch(resource, options);
+    console.log('sent:', JSON.parse(options.body));
+  }
+
+  endSession() {
+    sessionStorage.removeItem('sessionId');
+  }
+}
+
 class RecordingManager {
   constructor(agent) {
     this.agent = agent;
-    this.usingInitialRecorder = true;
     this.recorder = new Recorder({ emit: this.handle.bind(this) });
-    this.stasher = null;
+    this.stasher = new Stasher(this);
   }
 
   start() {
@@ -57,7 +98,7 @@ class RecordingManager {
   }
 
   handle(event) {
-    if (!this.usingInitialRecorder && this.stasher.isActive) {
+    if (this.stasher.isActive) {
       this.stasher.handle(event);
       return;
     }
@@ -72,9 +113,8 @@ class RecordingManager {
 
   handleTimeout() {
     this.recorder.stop();
-    this.usingInitialRecorder = false;
-    this.recorder = new Recorder({ emit: this.handle.bind(this) })
-    this.stasher = new Stasher(this);
+    this.stasher.start();
+    this.recorder = new Recorder({ emit: this.handle.bind(this) });
     this.recorder.start();
   }
 }
@@ -93,19 +133,23 @@ class Recorder {
 class Stasher {
   constructor(recordingManager) {
     this.recordingManager = recordingManager;
-    this.isActive = true;
+    this.isActive = false;
     this.events = [];
   }
 
+  activate() {
+    this.isActive = true;
+  }
+
   handle(event) {
-    this.isInitializingEvent(event) ? this.events.push(event) : this.shutdown(event);
+    this.isInitializingEvent(event) ? this.events.push(event) : this.deactivate(event);
   }
 
   isInitializingEvent({ type }) {
     return [2, 4].includes(type);
   }
 
-  shutdown(event) {
+  deactivate(event) {
     this.recordingManager.agent.sessionInterface.startSession();
     this.stamp(this.events, event.timestamp - 1);
     this.publish(...this.events, event);
@@ -201,44 +245,4 @@ class Timer {
   }
 }
 
-class SessionInterface {
-  constructor() {
-    this.SESSION_ID_KEY = 'sessionId';
-  }
 
-  start() {
-    if (!this.sessionExists()) this.startSession();
-  }
-
-  sessionExists() {
-    return !!this.getSessionId();
-  }
-
-  getSessionId() {
-    return sessionStorage.getItem(this.SESSION_ID_KEY);
-  }
-
-  startSession() {
-    sessionStorage.setItem(this.SESSION_ID_KEY, uuidv4());
-
-    const resource = `${config.endpoint}/start-session`;
-    const options = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        sessionId: this.getSessionId(),
-        timestamp: Date.now(),
-      })
-    };
-
-    // todo
-    // fetch(resource, options);
-    console.log('sent:', JSON.parse(options.body));
-  }
-
-  endSession() {
-    sessionStorage.removeItem('sessionId');
-  }
-}
