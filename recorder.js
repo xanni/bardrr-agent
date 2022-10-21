@@ -1,16 +1,16 @@
 /*
 todo:
-  - implement sending session-start request
   - give things direct references to what they need, i.e. no need to go through agent for everything
   - eliminate unnecessary collaborator objects
+  - think of a better name for metarecorder and recorder (and subclasses of recorder) (observer? relayer?)
   - make properties private
   - fill out conifg file (e.g. with more rrweb options)
   - wrap ugly rrweb recorder initialization (i.e. have it take a callback directly if possible)
   - change hardcoded event types
-  - format the message sent to the backend differently?
+  - change how session start request is sent...?
+  - change backend routes and reformat messages accordingly?
   - take out console.log / comments
   - make into npm package
-
 ideas:
   - change names of backend routes to be restful?
   - maybe:
@@ -29,7 +29,7 @@ export default class Agent {
     this.sessionInterface = new SessionInterface();
     this.sender = new Sender(this);
     this.metaRecorder = new MetaRecorder(this);
-    this.timer = new Timer(this, config.MAX_IDLE_TIME);
+    new Timer(this, config.MAX_IDLE_TIME);
   }
 
   initialize() {
@@ -65,8 +65,6 @@ class SessionInterface {
   startSession() {
     sessionStorage.setItem(this.SESSION_ID_KEY, uuidv4());
 
-    // let { sessionId, timestamp } = req.body;
-
     const resource = `${config.endpoint}/start-session`;
     const options = {
       method: 'POST',
@@ -74,13 +72,14 @@ class SessionInterface {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        sessionId: this.agent.sessionInterface.getSessionId(),
-        events: this.messageBuffer.flush(),
+        sessionId: this.getSessionId(),
+        timestamp: Date.now(),
       })
     };
 
-    // todo: uncomment etc.
+    // todo
     // fetch(resource, options);
+    console.log('sent:', JSON.parse(options.body));
   }
 
   endSession() {
@@ -215,7 +214,7 @@ class Sender {
       })
     };
 
-    // todo: uncomment etc.
+    // todo
     // fetch(resource, options);
     console.log('sent:', JSON.parse(options.body));
   }
@@ -232,7 +231,7 @@ class MessageBuffer extends Array {
 
   isFull() {
     // todo
-    return this.length === 5;
+    return this.length === 10;
   }
 
   flush() {
