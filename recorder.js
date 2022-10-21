@@ -9,6 +9,13 @@ todo:
   - change hardcoded event types
   - format the message sent to the backend differently?
   - take out console.log / comments
+  - make into npm package
+
+ideas:
+  - change names of backend routes to be restful?
+  - maybe:
+    - post to sessions to start session
+    - post to sessions/:id/events to add event (then session id would be part of url)
 */
 
 "use strict";
@@ -57,6 +64,23 @@ class SessionInterface {
 
   startSession() {
     sessionStorage.setItem(this.SESSION_ID_KEY, uuidv4());
+
+    // let { sessionId, timestamp } = req.body;
+
+    const resource = `${config.endpoint}/start-session`;
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sessionId: this.agent.sessionInterface.getSessionId(),
+        events: this.messageBuffer.flush(),
+      })
+    };
+
+    // todo: uncomment etc.
+    // fetch(resource, options);
   }
 
   endSession() {
