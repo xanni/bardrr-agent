@@ -18,7 +18,7 @@ todo:
 
 import { record } from 'rrweb';
 import { v4 as uuidv4 } from "uuid";
-import config from 'config';
+import config from './config';
 
 // maybe how to handle session will become clearer as we interact with it, i.e. send it, destroy it etc.
 // first lets implement the no timeout path (i.e. the page load path)
@@ -77,7 +77,7 @@ this.#dormantMode = {
 export default class Agent {
   constructor() {
     this.sessionInterface = new SessionInterface();
-    this.sender = new Sender();
+    this.sender = new Sender(this);
     this.metaRecorder = new MetaRecorder(this);
     this.timer = new Timer(this, config.MAX_IDLE_TIME);
   }
@@ -101,11 +101,11 @@ class SessionInterface {
   }
 
   initialize() {
-    if (!this.sessionExists()) startSession();
+    if (!this.sessionExists()) this.startSession();
   }
 
   sessionExists() {
-    return !!getSessionId();
+    return !!this.getSessionId();
   }
 
   getSessionId() {
@@ -139,45 +139,47 @@ class MetaRecorder {
 }
 
 class Recorder {
-  constructor(agent) {
-    this.agent = agent;
+  constructor(metaRecorder) {
+    this.metaRecorder = metaRecorder;
     this.stop = null;
   }
 
   share(event) {
-    this.agent.sender.handle(event);
-    this.agent.timer.restart();
+    this.metaRecorder.agent.sender.handle(event);
+    this.metaRecorder.agent.timer.restart();
   }
 }
 
 class ImmediatelySharingRecorder extends Recorder {
-  constructor(agent) {
-    super(agent);
+  constructor(metaRecorder) {
+    super(metaRecorder);
   }
 
   start() {
     this.stop = record({
-      emit: super.share
+      emit: super.share.bind(this),
     });
   }
 }
 
 class InitiallyHoardingRecorder extends Recorder {
-  constructor(agent) {
-    super(agent);
-    this.interceptor = new Interceptor(this);
+  constructor(metaRecorder) {
+    super(metaRecorder);
   }
 
   start() {
+    const recorder = this;
+    const interceptor = new Interceptor(this);
+
     this.stop = record({
       emit(event) {
-        if (this.interceptor.isActive) {
-          this.interceptor.handle(event);
+        if (interceptor.isActive) {
+          interceptor.handle(event);
         } else {
-          super.share(event);
+          recorder.share(event);
         }
-      }
-    })
+      },
+    });
   }
 }
 
@@ -197,7 +199,7 @@ class Interceptor {
   }
 
   shutdown(event) {
-    this.recorder.agent.sessionInterface.startSession();
+    this.recorder.metaRecorder.agent.sessionInterface.startSession();
     this.stamp(this.events, event.timestamp - 1);
     this.share(...this.events, event);
     this.isActive = false;
@@ -208,7 +210,9 @@ class Interceptor {
   }
 
   share(...events) {
-    events.forEach(this.recorder.share);
+    events.forEach(event => {
+      this.recorder.share(event);
+    });
   }
 }
 
@@ -276,11 +280,11 @@ class Timer {
   }
 
   stop() {
-    clearTimeout(this.#timeoutId);
+    clearTimeout(this.timeoutId);
   }
 
   start() {
-    this.#timeoutId = setTimeout(this.agent.handleTimeout, MAX_IDLE_TIME);
+    this.timeoutId = setTimeout(this.agent.handleTimeout.bind(this.agent), this.MAX_IDLE_TIME);
   }
 }
 
