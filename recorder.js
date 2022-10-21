@@ -2,7 +2,6 @@
 todo:
   - give things direct references to what they need, i.e. no need to go through agent for everything
   - eliminate unnecessary collaborator objects
-  - think of a better name for metarecorder and recorder (and subclasses of recorder) (observer? relayer?)
   - make properties private
   - fill out conifg file (e.g. with more rrweb options)
   - wrap ugly rrweb recorder initialization (i.e. have it take a callback directly if possible)
@@ -28,130 +27,72 @@ export default class Agent {
   constructor() {
     this.sessionInterface = new SessionInterface();
     this.sender = new Sender(this);
-    this.metaRecorder = new MetaRecorder(this);
-    new Timer(this, config.MAX_IDLE_TIME);
+    this.timer = new Timer(this, config.MAX_IDLE_TIME);
+    this.recordingManager = new RecordingManager(this);
   }
 
-  initialize() {
-    this.sessionInterface.initialize();
-    this.sender.initialize();
-    this.metaRecorder.start();
+  start() {
+    this.sessionInterface.start();
+    this.sender.start();
+    this.recordingManager.start();
   }
 
   handleTimeout() {
     this.sender.send();
     this.sessionInterface.endSession();
-    this.metaRecorder.reset();
+    this.recordingManager.handleTimeout();
   }
 }
 
-class SessionInterface {
-  constructor() {
-    this.SESSION_ID_KEY = 'sessionId';
-  }
-
-  initialize() {
-    if (!this.sessionExists()) this.startSession();
-  }
-
-  sessionExists() {
-    return !!this.getSessionId();
-  }
-
-  getSessionId() {
-    return sessionStorage.getItem(this.SESSION_ID_KEY);
-  }
-
-  startSession() {
-    sessionStorage.setItem(this.SESSION_ID_KEY, uuidv4());
-
-    const resource = `${config.endpoint}/start-session`;
-    const options = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        sessionId: this.getSessionId(),
-        timestamp: Date.now(),
-      })
-    };
-
-    // todo
-    // fetch(resource, options);
-    console.log('sent:', JSON.parse(options.body));
-  }
-
-  endSession() {
-    sessionStorage.removeItem('sessionId');
-  }
-}
-
-class MetaRecorder {
+class RecordingManager {
   constructor(agent) {
     this.agent = agent;
-    this.recorder = new ImmediatelySharingRecorder(this);
+    this.usingInitialRecorder = true;
+    this.recorder = new Recorder({ emit: this.handle.bind(this) });
+    this.stasher = null;
   }
 
   start() {
     this.recorder.start();
   }
 
-  reset() {
+  handle(event) {
+    if (!this.usingInitialRecorder && this.stasher.isActive) {
+      this.stasher.handle(event);
+      return;
+    }
+
+    this.publish(event);
+  }
+
+  publish(event) {
+    this.agent.sender.handle(event);
+    this.agent.timer.restart();
+  }
+
+  handleTimeout() {
     this.recorder.stop();
-    this.recorder = new InitiallyHoardingRecorder(this);
+    this.usingInitialRecorder = false;
+    this.recorder = new Recorder({ emit: this.handle.bind(this) })
+    this.stasher = new Stasher(this);
     this.recorder.start();
   }
 }
 
 class Recorder {
-  constructor(metaRecorder) {
-    this.metaRecorder = metaRecorder;
-    this.stop = null;
-  }
-
-  share(event) {
-    this.metaRecorder.agent.sender.handle(event);
-    this.metaRecorder.agent.timer.restart();
-  }
-}
-
-class ImmediatelySharingRecorder extends Recorder {
-  constructor(metaRecorder) {
-    super(metaRecorder);
+  constructor(options) {
+    this.options = options;
+    this.stop = null
   }
 
   start() {
-    this.stop = record({
-      emit: super.share.bind(this),
-    });
+    this.stop = record(this.options);
   }
 }
 
-class InitiallyHoardingRecorder extends Recorder {
-  constructor(metaRecorder) {
-    super(metaRecorder);
-  }
-
-  start() {
-    const recorder = this;
-    const interceptor = new Interceptor(this);
-
-    this.stop = record({
-      emit(event) {
-        if (interceptor.isActive) {
-          interceptor.handle(event);
-        } else {
-          recorder.share(event);
-        }
-      },
-    });
-  }
-}
-
-class Interceptor {
-  constructor(recorder) {
-    this.recorder = recorder;
+class Stasher {
+  constructor(recordingManager) {
+    this.recordingManager = recordingManager;
     this.isActive = true;
     this.events = [];
   }
@@ -165,9 +106,9 @@ class Interceptor {
   }
 
   shutdown(event) {
-    this.recorder.metaRecorder.agent.sessionInterface.startSession();
+    this.recordingManager.agent.sessionInterface.startSession();
     this.stamp(this.events, event.timestamp - 1);
-    this.share(...this.events, event);
+    this.publish(...this.events, event);
     this.isActive = false;
   }
 
@@ -175,9 +116,9 @@ class Interceptor {
     events.forEach(event => event.timestamp = timestamp)
   }
 
-  share(...events) {
+  publish(...events) {
     events.forEach(event => {
-      this.recorder.share(event);
+      this.recordingManager.publish(event);
     });
   }
 }
@@ -188,7 +129,7 @@ class Sender {
     this.messageBuffer = new MessageBuffer();
   }
 
-  initialize() {
+  start() {
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') this.send();
     });
@@ -257,5 +198,47 @@ class Timer {
 
   start() {
     this.timeoutId = setTimeout(this.agent.handleTimeout.bind(this.agent), this.MAX_IDLE_TIME);
+  }
+}
+
+class SessionInterface {
+  constructor() {
+    this.SESSION_ID_KEY = 'sessionId';
+  }
+
+  start() {
+    if (!this.sessionExists()) this.startSession();
+  }
+
+  sessionExists() {
+    return !!this.getSessionId();
+  }
+
+  getSessionId() {
+    return sessionStorage.getItem(this.SESSION_ID_KEY);
+  }
+
+  startSession() {
+    sessionStorage.setItem(this.SESSION_ID_KEY, uuidv4());
+
+    const resource = `${config.endpoint}/start-session`;
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sessionId: this.getSessionId(),
+        timestamp: Date.now(),
+      })
+    };
+
+    // todo
+    // fetch(resource, options);
+    console.log('sent:', JSON.parse(options.body));
+  }
+
+  endSession() {
+    sessionStorage.removeItem('sessionId');
   }
 }
