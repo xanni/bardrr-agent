@@ -234,6 +234,8 @@ class Sender {
   }
 
   send() {
+    if (this.messageBuffer.isEmpty()) return;
+
     const resource = `${config.endpoint}/record`;
     const options = {
       method: 'POST',
@@ -257,9 +259,13 @@ class MessageBuffer extends Array {
     super();
   }
 
+  isEmpty() {
+    return this.length === 0;
+  }
+
   isFull() {
-    // todo: set condition
-    return true;
+    // todo
+    return this.length === 5;
   }
 
   flush() {
