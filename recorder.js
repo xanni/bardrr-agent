@@ -170,7 +170,7 @@ class Stasher {
 class Sender {
   constructor(agent) {
     this.agent = agent;
-    this.messageBuffer = new MessageBuffer();
+    this.eventBuffer = new EventBuffer();
   }
 
   start() {
@@ -180,12 +180,12 @@ class Sender {
   }
 
   handle(event) {
-    this.messageBuffer.push(event);
-    if (this.messageBuffer.isFull()) this.send();
+    this.eventBuffer.push(event);
+    if (this.eventBuffer.isFull()) this.send();
   }
 
   send() {
-    if (this.messageBuffer.isEmpty()) return;
+    if (this.eventBuffer.isEmpty()) return;
 
     const resource = `${config.endpoint}/record`;
     const options = {
@@ -195,7 +195,7 @@ class Sender {
       },
       body: JSON.stringify({
         sessionId: this.agent.sessionInterface.getSessionId(),
-        events: this.messageBuffer.flush(),
+        events: this.eventBuffer.flush(),
       })
     };
 
@@ -205,7 +205,7 @@ class Sender {
   }
 }
 
-class MessageBuffer extends Array {
+class EventBuffer extends Array {
   constructor() {
     super();
   }
