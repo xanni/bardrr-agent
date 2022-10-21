@@ -1,7 +1,9 @@
 /*
 todo:
+  - implemente session-start route
   - make properties private
   - put more configuration (e.g. rrweb options) in configuration file
+  - move config into agent?
   - refactor?
   - take out console.log / comments
   - change hardcoded event types?
@@ -9,6 +11,7 @@ todo:
   - change ugly rrweb recorder initialization... maybe wrap it somehow so that the wrapper takes a callback directly
   - eliminate unnecessary collaborator objects
   - change agent to orchestrator?
+  - format the message sent to the backend differently?
 */
 
 "use strict";
@@ -74,17 +77,19 @@ this.#dormantMode = {
 export default class Agent {
   constructor() {
     this.sessionInterface = new SessionInterface();
-    this.metaRecorder = new MetaRecorder(this);
     this.sender = new Sender();
+    this.metaRecorder = new MetaRecorder(this);
     this.timer = new Timer(this, config.MAX_IDLE_TIME);
   }
 
   initialize() {
     this.sessionInterface.initialize();
+    this.sender.initialize();
     this.metaRecorder.start();
   }
 
   handleTimeout() {
+    this.sender.send();
     this.sessionInterface.endSession();
     this.metaRecorder.reset();
   }
@@ -151,7 +156,9 @@ class ImmediatelySharingRecorder extends Recorder {
   }
 
   start() {
-    this.stop = record({ emit: super.share });
+    this.stop = record({
+      emit: super.share
+    });
   }
 }
 
@@ -206,14 +213,53 @@ class Interceptor {
 }
 
 class Sender {
-  // add session id to event
-  // send batch on visibility change
-  handle(event) {
-
+  constructor(agent) {
+    this.agent = agent;
+    this.messageBuffer = new MessageBuffer();
   }
 
-  package(event) {
+  initialize() {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') this.send();
+    });
+  }
 
+  handle(event) {
+    this.messageBuffer.push(event);
+    if (this.messageBuffer.isFull()) this.send();
+  }
+
+  send() {
+    const resource = `${config.endpoint}/record`;
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sessionId: this.agent.sessionInterface.getSessionId(),
+        events: this.messageBuffer.flush(),
+      })
+    };
+
+    // todo: uncomment etc.
+    // fetch(resource, options);
+    console.log('sent this:', JSON.parse(options.body));
+  }
+}
+
+class MessageBuffer extends Array {
+  constructor() {
+    super();
+  }
+
+  isFull() {
+    // todo: set condition
+    return true;
+  }
+
+  flush() {
+    return this.splice(0, this.length);
   }
 }
 
@@ -237,6 +283,8 @@ class Timer {
     this.#timeoutId = setTimeout(this.agent.handleTimeout, MAX_IDLE_TIME);
   }
 }
+
+
 
 /*
 
