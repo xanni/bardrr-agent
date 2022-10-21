@@ -5,6 +5,7 @@ todo:
   - refactor?
   - take out console.log / comments
   - change hardcoded event types
+  - do i need to go through the agent? can i just go to what i need directly? for now yes - think of it as a kafka
 */
 
 "use strict";
@@ -93,16 +94,17 @@ this.#dormantMode = {
 class MetaRecorder {
   constructor(agent) {
     this.agent = agent;
-    this.recorder = new InitiallyActiveRecorder(this);
+    this.recorder = new ImmediatelySharingRecorder(this);
   }
 
   start() {
     this.recorder.start();
   }
 
+  // i think this will change
   sleep() {
     this.recorder.stop();
-    this.recorder = new InitiallySleepingRecorder(this);
+    this.recorder = new InitiallyHoardingRecorder(this);
     this.recorder.start();
   }
 }
@@ -112,68 +114,74 @@ class Recorder {
     this.agent = agent;
     this.stop = null;
   }
+
+  share(event) {
+    this.agent.batcher.handle(event);
+    this.agent.timer.restart();
+  }
 }
 
-class InitiallyActiveRecorder extends Recorder {
+class ImmediatelySharingRecorder extends Recorder {
   constructor(agent) {
     super(agent);
   }
 
   start() {
     this.agent.timer.start();
-
-    this.stop = record({
-      emit(event) {
-        this.agent.batcher.handle(event);
-        this.agent.timer.restart();
-      },
-    });
+    this.stop = record({ emit: super.share });
   }
 }
 
-class InitiallySleepingRecorder extends Recorder {
+class InitiallyHoardingRecorder extends Recorder {
   constructor(agent) {
     super(agent);
-    this.isSleeping = null;
-    this.sleepManager = new SleepManager(this);
+    this.interceptor = new Interceptor(this);
   }
 
   start() {
-    this.isSleeping = true;
-
     this.stop = record({
       emit(event) {
-        if (this.status === 'sleeping') {
-          this.sleepManager.handle(event);
+        if (this.hoarder.isActive) {
+          this.hoarder.handle(event);
         } else {
 
         }
       }
     })
   }
-
 }
 
-class SleepManager {
+class Interceptor {
   constructor(recorder) {
     this.recorder = recorder;
-    this.initialEvents = [];
+    this.isActive = true;
+    this.isHoarding = true;
+    this.events = [];
   }
 
   handle(event) {
-    this.isTimeToActivate() ? this.activate() : this.collect(event);
+    this.isHoarding ? this.hoard(event) : this.shutdown();
   }
 
-  isTimeToRouse() {
-    return (
-      this.initialEvents.some(({ type }) => type === 2) &&
-      this.initialEvents.some(({ type }) => type === 4)
-    );
+  hoard(event) {
+    this.events.push(event);
   }
 
-  collect(event) {
-    this.initialEvents.push(event);
-  }
+  // hoard should just push the event
+  // updating the isHoarding should be separate i think
+
+  this.updateIsHoarding = this.isDoneHoarding()
+isDoneHoarding() {
+  return (
+    this.events.some(({ type }) => type === 2) &&
+    t his.events.some(({ type }) => type === 4)
+  );
+}
+
+shutdown() {
+
+}
+
 }
 
 // this.#dormantModeData = {
