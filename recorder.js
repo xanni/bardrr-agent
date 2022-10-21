@@ -98,7 +98,7 @@ class RecordingManager {
   }
 
   handle(event) {
-    if (this.stasher.isActive) {
+    if (this.stasher.isRunning) {
       this.stasher.handle(event);
       return;
     }
@@ -133,27 +133,27 @@ class Recorder {
 class Stasher {
   constructor(recordingManager) {
     this.recordingManager = recordingManager;
-    this.isActive = false;
+    this.isRunning = false;
     this.events = [];
   }
 
-  activate() {
-    this.isActive = true;
+  start() {
+    this.isRunning = true;
   }
 
   handle(event) {
-    this.isInitializingEvent(event) ? this.events.push(event) : this.deactivate(event);
+    this.isInitializingEvent(event) ? this.events.push(event) : this.stop(event);
   }
 
   isInitializingEvent({ type }) {
     return [2, 4].includes(type);
   }
 
-  deactivate(event) {
+  stop(event) {
     this.recordingManager.agent.sessionInterface.startSession();
     this.stamp(this.events, event.timestamp - 1);
     this.publish(...this.events, event);
-    this.isActive = false;
+    this.isRunning = false;
   }
 
   stamp(events, timestamp) {
@@ -244,5 +244,3 @@ class Timer {
     this.timeoutId = setTimeout(this.agent.handleTimeout.bind(this.agent), this.MAX_IDLE_TIME);
   }
 }
-
-
