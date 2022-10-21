@@ -4,7 +4,7 @@ todo:
   - put more configuration (e.g. rrweb options) in configuration file
   - refactor?
   - take out console.log / comments
-  - change hardcoded event types
+  - change hardcoded event types?
   - do i need to go through the agent? can i just go to what i need directly? for now yes - think of it as a kafka
 */
 
@@ -141,8 +141,8 @@ class InitiallyHoardingRecorder extends Recorder {
   start() {
     this.stop = record({
       emit(event) {
-        if (this.hoarder.isActive) {
-          this.hoarder.handle(event);
+        if (this.interceptor.isActive) {
+          this.interceptor.handle(event);
         } else {
 
         }
@@ -155,33 +155,61 @@ class Interceptor {
   constructor(recorder) {
     this.recorder = recorder;
     this.isActive = true;
-    this.isHoarding = true;
-    this.events = [];
+    this.initializingFullSnapshotEvent = null;
+    this.initializingMetaEvent = null;
+    this.firstSessionEvent = null;
   }
 
   handle(event) {
-    this.isHoarding ? this.hoard(event) : this.shutdown();
+    this.isInitializingEvent() ? this.hoard(event) : this.shutdown(event);
+  }
+
+  isInitializingEvent({ type }) {
+    return [2, 4].includes(type);
   }
 
   hoard(event) {
-    this.events.push(event);
+    switch (event.type) {
+      case 2: return this.initializingFullSnapshotEvent = event;
+      case 4: return this.initializingMetaEvent = event;
+    }
   }
 
-  // hoard should just push the event
-  // updating the isHoarding should be separate i think
+  shutdown(event) {
+    this.firstSessionEvent = event;
+    this.stampInitializingEvents(this.firstSessionEvent.timestamp);
+    this.shareAll();
+    // send initial events and event to batch manager
 
-  this.updateIsHoarding = this.isDoneHoarding()
-isDoneHoarding() {
-  return (
-    this.events.some(({ type }) => type === 2) &&
-    t his.events.some(({ type }) => type === 4)
-  );
+    this.isActive = false;
+  }
+
+  stampInitializingEvents(timestamp) {
+    [
+      this.initializingFullSnapshotEvent,
+      this.initializingMetaEvent,
+    ].forEach(event => event.timestamp = timestamp);
+  }
+
+  shareAll() {
+    [
+      this.initializingFullSnapshotEvent,
+      this.initializingMetaEvent,
+      this.firstSessionEvent,
+    ].forEach(this.recorder.super.share);
+  }
 }
 
-shutdown() {
+class InitializingEvents extends Array {
+  constructor() {
+    super();
+  }
 
-}
 
+
+  stamp(timestamp) {
+    this.forEach(event => event.timestamp = timestamp)
+  }
 }
 
 // this.#dormantModeData = {
