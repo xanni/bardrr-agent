@@ -100,11 +100,11 @@ class RecordingManager {
 
   handle(event) {
     if (this.#isClick(event)) {
-      let childNodes = this.#getChildNodes(event);
-      if (this.#firstChildIsText(childNodes)) {
+      let clickedNode = record.mirror.getNode(event.data.id);
+      if (this.#nodeIsInteresting(clickedNode)) {
         event["conversionData"] = {};
         event.conversionData.eventType = "click";
-        event.conversionData.textContent = childNodes[0].textContent;
+        event.conversionData.textContent = clickedNode.textContent;
       }
     }
     if (this.stasher.isRunning) {
@@ -134,13 +134,10 @@ class RecordingManager {
       event.data.type === 2 //mouse action is a click
     );
   }
-  #getChildNodes(clickEvent) {
-    let clickedNodeId = clickEvent.data.id;
-    let clickedNode = record.mirror.getNode(clickedNodeId);
-    return clickedNode.childNodes;
-  }
-  #firstChildIsText(childNodes) {
-    return childNodes.length === 1 && childNodes[0].nodeType === Node.TEXT_NODE;
+  #nodeIsInteresting(clickedNode) {
+    return (
+      clickedNode.nodeName === "BUTTON" || clickedNode.nodeName === "ANCHOR"
+    );
   }
 }
 
