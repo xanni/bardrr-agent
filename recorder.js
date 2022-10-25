@@ -1,5 +1,6 @@
 /*
 todo:
+  - extract classes into their own files
   - give things direct references to what they need, i.e. no need to go through agent for everything
   - eliminate unnecessary collaborator objects
   - make properties private
