@@ -103,6 +103,7 @@ class RecordingManager {
       let childNodes = this.#getChildNodes(event);
       if (this.#firstChildIsText(childNodes)) {
         event["conversionData"] = {};
+        event.conversionData.eventType = "click";
         event.conversionData.textContent = childNodes[0].textContent;
       }
     }
