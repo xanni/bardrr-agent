@@ -146,8 +146,12 @@ class Stasher {
     this.isInitializingEvent(event) ? this.events.push(event) : this.stop(event);
   }
 
-  isInitializingEvent({ type }) {
-    return [2, 4].includes(type);
+  isInitializingEvent(event) {
+    return [2, 4].includes(event.type) || this.isSelectionEvent(event);
+  }
+
+  isSelectionEvent(event) {
+    return event.type === 3 && event.data.source === 14;
   }
 
   stop(event) {
