@@ -154,6 +154,7 @@ class Stasher {
     this.recordingManager.agent.sessionInterface.startSession();
     this.stamp(this.events, event.timestamp - 1);
     this.publish(...this.events, event);
+    this.events = [];
     this.isRunning = false;
   }
 
