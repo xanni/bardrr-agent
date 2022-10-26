@@ -92,6 +92,14 @@ class RecordingManager {
         event.conversionData.textContent = clickedNode.textContent;
       }
     }
+
+    if (this.#isConsoleError(event)) {
+      event["conversionData"] = {};
+      event.conversionData.eventType = "console_error";
+      event.conversionData.message = event.data.payload.payload[0];
+      event.conversionData.trace = event.data.payload.trace;
+    }
+
     if (this.stasher.isRunning) {
       this.stasher.handle(event);
       return;
@@ -118,10 +126,19 @@ class RecordingManager {
       event.data.type === 2 //mouse action is a click
     );
   }
+
   #nodeIsInteresting(clickedNode) {
     return (
       clickedNode.nodeName === "BUTTON" || clickedNode.nodeName === "ANCHOR"
     );
+  }
+
+  #isConsoleError(event) {
+    return this.#isConsoleEvent(event) && event.data.payload.level === 'error';
+  }
+
+  #isConsoleEvent(event) {
+    return event.type === 6;
   }
 }
 
@@ -210,6 +227,9 @@ class Sender {
 
   send() {
     if (this.eventBuffer.isEmpty()) return;
+
+    // todelete
+    console.log('sending:', this.eventBuffer);
 
     const resource = `${config.endpoint}/record`;
     const options = {
