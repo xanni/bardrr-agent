@@ -18,11 +18,6 @@ ideas:
     - post to sessions/:id/events to add event (then session id would be part of url)
 */
 
-/*
-  - change rrweb record emit function to have that console option
-  - need to ignore type 6 events on restart
-*/
-
 "use strict";
 
 import * as rrweb from "rrweb";
@@ -70,22 +65,6 @@ class SessionInterface {
 
   startSession() {
     sessionStorage.setItem(this.SESSION_ID_KEY, uuidv4());
-
-    const resource = `${config.endpoint}/start-session`;
-    const options = {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        sessionId: this.getSessionId(),
-        timestamp: Date.now(),
-      }),
-    };
-
-    // todo
-    // fetch(resource, options);
-    console.log("sent:", JSON.parse(options.body));
   }
 
   endSession() {
@@ -244,9 +223,7 @@ class Sender {
       }),
     };
 
-    // todo
-    // fetch(resource, options);
-    console.log("sent:", JSON.parse(options.body));
+    fetch(resource, options);
   }
 }
 
