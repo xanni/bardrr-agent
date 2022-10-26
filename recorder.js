@@ -150,7 +150,7 @@ class Recorder {
   constructor(handleEvent) {
     this.configuration = {
       emit: handleEvent,
-      plugins: [rrweb.getRecordConsolePlugin()],
+      plugins: [rrweb.getRecordConsolePlugin(config.recordConsolePlugin)],
     }
     this.stop = null;
   }
