@@ -18,9 +18,14 @@ ideas:
     - post to sessions/:id/events to add event (then session id would be part of url)
 */
 
+/*
+  - change rrweb record emit function to have that console option
+  - need to ignore type 6 events on restart
+*/
+
 "use strict";
 
-import { record } from "rrweb";
+import * as rrweb from "rrweb";
 import { v4 as uuidv4 } from "uuid";
 import config from "./config";
 
@@ -39,9 +44,10 @@ export default class Agent {
   }
 
   handleTimeout() {
+    this.recordingManager.recorder.stop();
     this.sender.send();
     this.sessionInterface.endSession();
-    this.recordingManager.handleTimeout();
+    this.recordingManager.startRecorderWithStasher();
   }
 }
 
@@ -90,7 +96,7 @@ class SessionInterface {
 class RecordingManager {
   constructor(agent) {
     this.agent = agent;
-    this.recorder = new Recorder({ emit: this.handle.bind(this) });
+    this.recorder = new Recorder(this.handleEvent.bind(this));
     this.stasher = new Stasher(this);
   }
 
@@ -98,9 +104,9 @@ class RecordingManager {
     this.recorder.start();
   }
 
-  handle(event) {
+  handleEvent(event) {
     if (this.#isClick(event)) {
-      let clickedNode = record.mirror.getNode(event.data.id);
+      let clickedNode = rrweb.record.mirror.getNode(event.data.id);
       if (this.#nodeIsInteresting(clickedNode)) {
         event["conversionData"] = {};
         event.conversionData.eventType = "click";
@@ -112,18 +118,17 @@ class RecordingManager {
       return;
     }
 
-    this.publish(event);
+    this.publishEvent(event);
   }
 
-  publish(event) {
+  publishEvent(event) {
     this.agent.sender.handle(event);
     this.agent.timer.restart();
   }
 
-  handleTimeout() {
-    this.recorder.stop();
+  startRecorderWithStasher() {
     this.stasher.start();
-    this.recorder = new Recorder({ emit: this.handle.bind(this) });
+    this.recorder = new Recorder(this.handleEvent.bind(this));
     this.recorder.start();
   }
 
@@ -142,13 +147,16 @@ class RecordingManager {
 }
 
 class Recorder {
-  constructor(options) {
-    this.options = options;
+  constructor(handleEvent) {
+    this.configuration = {
+      emit: handleEvent,
+      plugins: [rrweb.getRecordConsolePlugin()],
+    }
     this.stop = null;
   }
 
   start() {
-    this.stop = record(this.options);
+    this.stop = rrweb.record(this.configuration);
   }
 }
 
@@ -170,11 +178,19 @@ class Stasher {
   }
 
   isInitializingEvent(event) {
-    return [2, 4].includes(event.type) || this.isSelectionEvent(event);
+    return (
+      [2, 4].includes(event.type)
+      || this.isSelectionEvent(event)
+      || this.isConsoleEvent(event)
+    );
   }
 
   isSelectionEvent(event) {
     return event.type === 3 && event.data.source === 14;
+  }
+
+  isConsoleEvent(event) {
+    return event.type === 6;
   }
 
   stop(event) {
@@ -191,7 +207,7 @@ class Stasher {
 
   publish(...events) {
     events.forEach((event) => {
-      this.recordingManager.publish(event);
+      this.recordingManager.publishEvent(event);
     });
   }
 }
@@ -229,8 +245,8 @@ class Sender {
     };
 
     // todo
-    fetch(resource, options);
-    //console.log("sent:", JSON.parse(options.body));
+    // fetch(resource, options);
+    console.log("sent:", JSON.parse(options.body));
   }
 }
 
