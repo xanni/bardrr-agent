@@ -78,8 +78,8 @@ class SessionInterface {
     };
 
     // todo
-    // fetch(resource, options);
-    console.log("sent:", JSON.parse(options.body));
+    fetch(resource, options);
+    // console.log("sent:", JSON.parse(options.body));
   }
 
   endSession() {
