@@ -20,9 +20,9 @@ ideas:
 
 "use strict";
 
-import { record } from 'rrweb';
+import { record } from "rrweb";
 import { v4 as uuidv4 } from "uuid";
-import config from './config';
+import config from "./config";
 
 export default class Agent {
   constructor() {
@@ -47,7 +47,7 @@ export default class Agent {
 
 class SessionInterface {
   constructor() {
-    this.SESSION_ID_KEY = 'sessionId';
+    this.SESSION_ID_KEY = "sessionId";
   }
 
   start() {
@@ -67,23 +67,23 @@ class SessionInterface {
 
     const resource = `${config.endpoint}/start-session`;
     const options = {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         sessionId: this.getSessionId(),
         timestamp: Date.now(),
-      })
+      }),
     };
 
     // todo
     // fetch(resource, options);
-    console.log('sent:', JSON.parse(options.body));
+    console.log("sent:", JSON.parse(options.body));
   }
 
   endSession() {
-    sessionStorage.removeItem('sessionId');
+    sessionStorage.removeItem("sessionId");
   }
 }
 
@@ -99,6 +99,14 @@ class RecordingManager {
   }
 
   handle(event) {
+    if (this.#isClick(event)) {
+      let clickedNode = record.mirror.getNode(event.data.id);
+      if (this.#nodeIsInteresting(clickedNode)) {
+        event["conversionData"] = {};
+        event.conversionData.eventType = "click";
+        event.conversionData.textContent = clickedNode.textContent;
+      }
+    }
     if (this.stasher.isRunning) {
       this.stasher.handle(event);
       return;
@@ -118,12 +126,25 @@ class RecordingManager {
     this.recorder = new Recorder({ emit: this.handle.bind(this) });
     this.recorder.start();
   }
+
+  #isClick(event) {
+    return (
+      event.type === 3 && //incremental snapshot event
+      event.data.source === 2 && //source of incremental snapshot is a mouse action
+      event.data.type === 2 //mouse action is a click
+    );
+  }
+  #nodeIsInteresting(clickedNode) {
+    return (
+      clickedNode.nodeName === "BUTTON" || clickedNode.nodeName === "ANCHOR"
+    );
+  }
 }
 
 class Recorder {
   constructor(options) {
     this.options = options;
-    this.stop = null
+    this.stop = null;
   }
 
   start() {
@@ -143,7 +164,9 @@ class Stasher {
   }
 
   handle(event) {
-    this.isInitializingEvent(event) ? this.events.push(event) : this.stop(event);
+    this.isInitializingEvent(event)
+      ? this.events.push(event)
+      : this.stop(event);
   }
 
   isInitializingEvent(event) {
@@ -163,11 +186,11 @@ class Stasher {
   }
 
   stamp(events, timestamp) {
-    events.forEach(event => event.timestamp = timestamp)
+    events.forEach((event) => (event.timestamp = timestamp));
   }
 
   publish(...events) {
-    events.forEach(event => {
+    events.forEach((event) => {
       this.recordingManager.publish(event);
     });
   }
@@ -180,8 +203,8 @@ class Sender {
   }
 
   start() {
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') this.send();
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") this.send();
     });
   }
 
@@ -195,19 +218,19 @@ class Sender {
 
     const resource = `${config.endpoint}/record`;
     const options = {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         sessionId: this.agent.sessionInterface.getSessionId(),
         events: this.eventBuffer.flush(),
-      })
+      }),
     };
 
     // todo
-    // fetch(resource, options);
-    console.log('sent:', JSON.parse(options.body));
+    fetch(resource, options);
+    //console.log("sent:", JSON.parse(options.body));
   }
 }
 
@@ -247,6 +270,9 @@ class Timer {
   }
 
   start() {
-    this.timeoutId = setTimeout(this.agent.handleTimeout.bind(this.agent), this.MAX_IDLE_TIME);
+    this.timeoutId = setTimeout(
+      this.agent.handleTimeout.bind(this.agent),
+      this.MAX_IDLE_TIME
+    );
   }
 }
