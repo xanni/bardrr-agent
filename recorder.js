@@ -213,9 +213,6 @@ class Sender {
   send() {
     if (this.eventBuffer.isEmpty()) return;
 
-    // todelete
-    console.log('sending:', this.eventBuffer);
-
     const resource = `${config.endpoint}/record`;
     const options = {
       method: "POST",
