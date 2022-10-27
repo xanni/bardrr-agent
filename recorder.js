@@ -93,13 +93,6 @@ class RecordingManager {
       }
     }
 
-    if (this.#isConsoleError(event)) {
-      event["conversionData"] = {};
-      event.conversionData.eventType = "console_error";
-      event.conversionData.message = event.data.payload.payload[0];
-      event.conversionData.trace = event.data.payload.trace;
-    }
-
     if (this.stasher.isRunning) {
       this.stasher.handle(event);
       return;
@@ -131,14 +124,6 @@ class RecordingManager {
     return (
       clickedNode.nodeName === "BUTTON" || clickedNode.nodeName === "ANCHOR"
     );
-  }
-
-  #isConsoleError(event) {
-    return this.#isConsoleEvent(event) && event.data.payload.level === 'error';
-  }
-
-  #isConsoleEvent(event) {
-    return event.type === 6;
   }
 }
 
