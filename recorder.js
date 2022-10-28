@@ -32,10 +32,22 @@ export default class Agent {
     this.timer = new Timer(this, config.MAX_IDLE_TIME);
   }
 
-  start() {
+  async start() {
     this.sessionInterface.start();
     this.sender.start();
     this.recordingManager.start();
+    // AARONS THOUGHT
+    const resource = `${config.endpoint}/authenticate`;
+    const options = {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    };
+
+    const response = await fetch(resource, options);
+    const data = await response.json();
+    this.token = data.accessToken;
   }
 
   handleTimeout() {
@@ -132,7 +144,7 @@ class Recorder {
     this.configuration = {
       emit: handleEvent,
       plugins: [rrweb.getRecordConsolePlugin(config.recordConsolePlugin)],
-    }
+    };
     this.stop = null;
   }
 
@@ -160,9 +172,9 @@ class Stasher {
 
   isInitializingEvent(event) {
     return (
-      [2, 4].includes(event.type)
-      || this.isSelectionEvent(event)
-      || this.isConsoleEvent(event)
+      [2, 4].includes(event.type) ||
+      this.isSelectionEvent(event) ||
+      this.isConsoleEvent(event)
     );
   }
 
@@ -207,6 +219,8 @@ class Sender {
 
   handle(event) {
     this.eventBuffer.push(event);
+    //Check if the token is avaliable
+    if (!this.agent.token) return;
     if (this.eventBuffer.isFull()) this.send();
   }
 
@@ -218,6 +232,7 @@ class Sender {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        authorization: `bearer ${this.agent.token}`,
       },
       body: JSON.stringify({
         sessionId: this.agent.sessionInterface.getSessionId(),
