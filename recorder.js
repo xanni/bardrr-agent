@@ -36,7 +36,7 @@ export default class Agent {
     this.sessionInterface.start();
     this.sender.start();
     this.recordingManager.start();
-    // AARONS THOUGHT
+
     const resource = `${config.endpoint}/authenticate`;
     const options = {
       method: "GET",
