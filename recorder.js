@@ -44,7 +44,6 @@ export default class Agent {
         "Content-Type": "application/json",
       },
     };
-
     const response = await fetch(resource, options);
     const data = await response.json();
     this.token = data.accessToken;
@@ -55,6 +54,10 @@ export default class Agent {
     this.sender.send();
     this.sessionInterface.endSession();
     this.recordingManager.startRecorderWithStasher();
+  }
+
+  handleCustomEvent(customEventType) {
+    rrweb.record.addCustomEvent(customEventType, null);
   }
 }
 
