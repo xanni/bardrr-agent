@@ -154,7 +154,8 @@ class RecordingManager {
 
 class Recorder {
   constructor(handleEvent) {
-    this.configuration = {
+    this.options = {
+      ...config.recordOptions,
       emit: handleEvent,
       plugins: [rrweb.getRecordConsolePlugin(config.recordConsolePlugin)],
     };
@@ -162,7 +163,7 @@ class Recorder {
   }
 
   start() {
-    this.stop = rrweb.record(this.configuration);
+    this.stop = rrweb.record(this.options);
   }
 }
 
