@@ -44,7 +44,6 @@ export default class Agent {
         "Content-Type": "application/json",
       },
     };
-
     const response = await fetch(resource, options);
     const data = await response.json();
     this.token = data.accessToken;
@@ -55,6 +54,10 @@ export default class Agent {
     this.sender.send();
     this.sessionInterface.endSession();
     this.recordingManager.startRecorderWithStasher();
+  }
+
+  handleCustomEvent(customEventType) {
+    rrweb.record.addCustomEvent(customEventType, null);
   }
 }
 
@@ -105,6 +108,12 @@ class RecordingManager {
       }
     }
 
+    if (this.#isCustom(event)) {
+      event['conversionData'] = {};
+      event.conversionData.eventType = "custom";
+      event.conversionData.customEventType = event.data.tag;
+    }
+
     if (this.stasher.isRunning) {
       this.stasher.handle(event);
       return;
@@ -136,6 +145,10 @@ class RecordingManager {
     return (
       clickedNode.nodeName === "BUTTON" || clickedNode.nodeName === "ANCHOR"
     );
+  }
+
+  #isCustom(event) {
+    return event.type === 5;
   }
 }
 
