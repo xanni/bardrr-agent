@@ -108,6 +108,12 @@ class RecordingManager {
       }
     }
 
+    if (this.#isCustom(event)) {
+      event['conversionData'] = {};
+      event.conversionData.eventType = "custom";
+      event.conversionData.customEventType = event.data.tag;
+    }
+
     if (this.stasher.isRunning) {
       this.stasher.handle(event);
       return;
@@ -139,6 +145,10 @@ class RecordingManager {
     return (
       clickedNode.nodeName === "BUTTON" || clickedNode.nodeName === "ANCHOR"
     );
+  }
+
+  #isCustom(event) {
+    return event.type === 5;
   }
 }
 
