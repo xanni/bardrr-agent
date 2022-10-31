@@ -56,7 +56,7 @@ export default class Agent {
     this.recordingManager.startRecorderWithStasher();
   }
 
-  handleCustomEvent(customEventType) {
+  static handleCustomEvent(customEventType) {
     rrweb.record.addCustomEvent(customEventType, null);
   }
 }
@@ -109,7 +109,7 @@ class RecordingManager {
     }
 
     if (this.#isCustom(event)) {
-      event['conversionData'] = {};
+      event["conversionData"] = {};
       event.conversionData.eventType = "custom";
       event.conversionData.customEventType = event.data.tag;
     }
