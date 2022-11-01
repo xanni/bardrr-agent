@@ -251,6 +251,7 @@ class Sender {
       body: JSON.stringify({
         sessionId: this.agent.sessionInterface.getSessionId(),
         events: this.eventBuffer.flush(),
+        MAX_IDLE_TIME: config.MAX_IDLE_TIME,
       }),
     };
 
