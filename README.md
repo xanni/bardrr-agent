@@ -35,10 +35,14 @@ Agent.handleCustomEvent("myCustomEvent")
 ### Configuration Options
 
 MAX_IDLE_TIME: The maximum amout of idle time in ms before a session ends.
+
 blockClass: A class name the recorder will block from being recorded.
+
 ignoreClass: A class name the recorder will ignore changes to.
+
 maskTextClass: A class name the recorder will not collect the text from but will use '\*'.
-maskAllInputs: A boolean for when true will mask all inputs with '\_' and false will allow all inputs to be recorded.
+
+maskAllInputs: A boolean for when true will mask all inputs with '\*' and false will allow all inputs to be recorded.
 
 #### Example of config.js
 
