@@ -32,12 +32,14 @@ export default class Agent {
     this.timer = new Timer(this, config.MAX_IDLE_TIME);
   }
 
-  async start() {
+  async start({ appName, endpoint }) {
+    console.log("appName, ", appName);
     this.sessionInterface.start();
     this.sender.start();
     this.recordingManager.start();
-
-    const resource = `${config.endpoint}/authenticate`;
+    this.appName = appName;
+    this.endpoint = endpoint;
+    const resource = `${endpoint}/authenticate`;
     const options = {
       method: "GET",
       headers: {
@@ -240,13 +242,13 @@ class Sender {
 
   send() {
     if (this.eventBuffer.isEmpty()) return;
-
-    const resource = `${config.endpoint}/record`;
+    const resource = `${this.agent.endpoint}/record`;
     const options = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         authorization: `bearer ${this.agent.token}`,
+        appName: `${this.agent.appName}`,
       },
       body: JSON.stringify({
         sessionId: this.agent.sessionInterface.getSessionId(),
