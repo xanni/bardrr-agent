@@ -33,7 +33,6 @@ export default class Agent {
   }
 
   async start({ appName, endpoint }) {
-    console.log("appName, ", appName);
     this.sessionInterface.start();
     this.sender.start();
     this.recordingManager.start();
