@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/bard-rr/.github/main/profile/Asset%2010-8.png" width="100">
+<img src="https://github.com/bard-rr/.github/blob/main/profile/logo2.png?raw=true" width="100">
 
 [![Version](https://img.shields.io/npm/v/bardrr)](https://www.npmjs.com/package/bardrr)
 [![Downloads/week](https://img.shields.io/npm/dt/bardrr)](https://npmjs.org/package/bardrr)
