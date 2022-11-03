@@ -1,5 +1,9 @@
 <img src="https://raw.githubusercontent.com/bard-rr/.github/main/profile/Asset%2010-8.png" width="100">
 
+[![Version](https://img.shields.io/npm/v/bardrr)](https://www.npmjs.com/package/bardrr)
+[![Downloads/week](https://img.shields.io/npm/dt/bardrr)](https://npmjs.org/package/bardrr)
+[![License](https://img.shields.io/npm/l/monsoon-load-testing.svg)](https://github.com/minhphanhvu/bardrr/blob/master/package.json)
+
 # Bardrr
 
 ### Recording Agent for Bard
