@@ -1,3 +1,5 @@
+<img src="./Asset 10-8.png" width="100">
+
 # Bardrr
 
 ### Recording Agent for Bard
