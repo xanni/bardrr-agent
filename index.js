@@ -1,23 +1,3 @@
-/*
-todo:
-  - extract classes into their own files
-  - give things direct references to what they need, i.e. no need to go through agent for everything
-  - eliminate unnecessary collaborator objects
-  - make properties private
-  - fill out conifg file (e.g. with more rrweb options)
-  - wrap ugly rrweb recorder initialization (i.e. have it take a callback directly if possible)
-  - change hardcoded event types
-  - change how session start request is sent...?
-  - change backend routes and reformat messages accordingly?
-  - take out console.log / comments
-  - make into npm package
-ideas:
-  - change names of backend routes to be restful?
-  - maybe:
-    - post to sessions to start session
-    - post to sessions/:id/events to add event (then session id would be part of url)
-*/
-
 "use strict";
 
 import * as rrweb from "rrweb";
@@ -29,15 +9,19 @@ export default class Agent {
     this.sessionInterface = new SessionInterface();
     this.recordingManager = new RecordingManager(this);
     this.sender = new Sender(this);
-    this.timer = new Timer(this, config.MAX_IDLE_TIME);
   }
 
-  async start({ appName, endpoint }) {
+  async start({ appName, endpoint, MAX_IDLE_TIME }) {
+    this.appName = appName;
+    this.endpoint = endpoint;
+    this.MAX_IDLE_TIME = MAX_IDLE_TIME;
+
+    this.timer = new Timer(this, this.MAX_IDLE_TIME);
+
     this.sessionInterface.start();
     this.sender.start();
     this.recordingManager.start();
-    this.appName = appName;
-    this.endpoint = endpoint;
+
     const resource = `${endpoint}/authenticate`;
     const options = {
       method: "GET",
@@ -136,9 +120,9 @@ class RecordingManager {
 
   #isClick(event) {
     return (
-      event.type === 3 && //incremental snapshot event
-      event.data.source === 2 && //source of incremental snapshot is a mouse action
-      event.data.type === 2 //mouse action is a click
+      event.type === 3 && // incremental snapshot event
+      event.data.source === 2 && // source of incremental snapshot is a mouse action
+      event.data.type === 2 // mouse action is a click
     );
   }
 
@@ -234,7 +218,6 @@ class Sender {
 
   handle(event) {
     this.eventBuffer.push(event);
-    //Check if the token is avaliable
     if (!this.agent.token) return;
     if (this.eventBuffer.isFull()) this.send();
   }
@@ -252,7 +235,7 @@ class Sender {
       body: JSON.stringify({
         sessionId: this.agent.sessionInterface.getSessionId(),
         events: this.eventBuffer.flush(),
-        MAX_IDLE_TIME: config.MAX_IDLE_TIME,
+        MAX_IDLE_TIME: this.agent.MAX_IDLE_TIME,
       }),
     };
 
@@ -270,7 +253,6 @@ class EventBuffer extends Array {
   }
 
   isFull() {
-    // todo
     return this.length === 10;
   }
 

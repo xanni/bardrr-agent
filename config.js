@@ -1,5 +1,4 @@
 const config = {
-  MAX_IDLE_TIME: 60 * 1000,
   recordOptions: {
     blockClass: "rr-block",
     blockSelector: null,
