@@ -14,7 +14,7 @@ export default class Agent {
   async start({ appName, endpoint, MAX_IDLE_TIME }) {
     this.appName = appName;
     this.endpoint = endpoint;
-    this.MAX_IDLE_TIME = MAX_IDLE_TIME;
+    this.MAX_IDLE_TIME = MAX_IDLE_TIME || 60 * 1000;
 
     this.timer = new Timer(this, this.MAX_IDLE_TIME);
 
