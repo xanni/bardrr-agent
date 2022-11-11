@@ -18,24 +18,28 @@ This is a Node.js module available through the npm registry. Installation is don
 $ npm install bardrr
 ```
 
-### Configuring the Agent
+### Initializing the Agent
 
-In order to use the bardrr agent to collect browser events, you must import the Agent from bardrr. Then in your app you need to call the `start` method on the agent passing in an object with an `appName`, `endpoint` and `MAX_IDLE_TIME`. `endpoint` is where the agent will send the events. `MAX_IDLE_TIME` is the amount of idle time (in milliseconds) after which a session ends. Example:
+In order to use the bardrr agent to collect browser events, you must import the Agent from bardrr. Then in your app you need to call the `start` method on an instance of the agent, passing in an object with an `appName`, `endpoint` and `MAX_IDLE_TIME`. `endpoint` is where the agent will send the events. `MAX_IDLE_TIME` is the amount of idle time (in milliseconds) after which a session ends. Example:
 
 ```javascript
-import Agent from "bardrr"
+import Agent from "bardrr";
 
-new Agent().start({appName: "Party App", endpoint: "http://www.myfancyapp.com", MAX_IDLE_TIME: 60000});
+new Agent().start({
+  appName: "Better Brew",
+  endpoint: "http://www.betterbrew.com",
+  MAX_IDLE_TIME: 60 * 1000,
+});
 ```
 
 ### Custom Events
 
-To create custom events you will need to import the agent and execute the `handleCustomEvent` method with a custom event name passed in as an argument.
+To trigger and have the Agent handle a custom event you need to import the agent and call the static `handleCustomEvent` method on it with a custom event type passed in as an argument.
 
-```
-import Agent from "bardrr"
+```javascript
+import Agent from "bardrr";
 
-Agent.handleCustomEvent("myCustomEvent")
+Agent.handleCustomEvent("myCustomEvent");
 ```
 
 ### Additional Configuration
