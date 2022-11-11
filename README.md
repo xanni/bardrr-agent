@@ -8,7 +8,7 @@
 
 ### Recording Agent for Bard
 
-Bardrr is a node.js package for recording browser events for the bard session replay and anyalysis tool.
+Bardrr is a node.js package for recording browser events for the bard session replay and analysis tool.
 
 ### Installation
 
@@ -20,12 +20,12 @@ $ npm install bardrr
 
 ### Configuring the Agent
 
-In order to use the bardrr agent to collect browser events, you must import the Agent from bardrr. Then in you app you need to call the `start` method on the agent passing in an object with an `appName` and `endpoint`. This endpoint is where the agent will send the events. Example:
+In order to use the bardrr agent to collect browser events, you must import the Agent from bardrr. Then in your app you need to call the `start` method on the agent passing in an object with an `appName`, `endpoint` and `MAX_IDLE_TIME`. `endpoint` is where the agent will send the events. `MAX_IDLE_TIME` is the amount of idle time (in milliseconds) after which a session ends. Example:
 
-```javasciprt
+```javascript
 import Agent from "bardrr"
 
-new Agent().start({appName: "Party App", endpoint: "http://www.myfancyapp.com"});
+new Agent().start({appName: "Party App", endpoint: "http://www.myfancyapp.com", MAX_IDLE_TIME: 60000});
 ```
 
 ### Custom Events
@@ -39,8 +39,6 @@ Agent.handleCustomEvent("myCustomEvent")
 ```
 
 ### Configuration Options
-
-MAX_IDLE_TIME: The maximum amout of idle time in ms before a session ends.
 
 blockClass: A class name the recorder will block from being recorded.
 
