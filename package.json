@@ -2,7 +2,7 @@
   "name": "bardrr",
   "version": "2.2.2",
   "description": "",
-  "main": "recorder.js",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
