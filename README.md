@@ -38,41 +38,6 @@ import Agent from "bardrr"
 Agent.handleCustomEvent("myCustomEvent")
 ```
 
-### Configuration Options
+### Additional Configuration
 
-blockClass: A class name the recorder will block from being recorded.
-
-ignoreClass: A class name the recorder will ignore changes to.
-
-maskTextClass: A class name the recorder will not collect the text from but will use '\*'.
-
-maskAllInputs: A boolean for when true will mask all inputs with '\*' and false will allow all inputs to be recorded.
-
-#### Example of config.js
-
-```
-const config = {
-  MAX_IDLE_TIME: 60 * 1000,
-  recordOptions: {
-    blockClass: 'rr-block',
-    blockSelector: null,
-    ignoreClass: 'rr-ignore',
-    ignoreCSSAttributes: null,
-    maskTextClass: 'rr-mask',
-    maskTextSelector: null,
-    maskAllInputs: true,
-    maskInputOptions: { password: true },
-    maskInputFn: undefined,
-    maskTextFn: undefined,
-  },
-  recordConsolePlugin: {
-    level: ['error'],
-    lengthThreshold: Number.POSITIVE_INFINITY,
-    stringifyOptions: {
-      stringLengthLimit: Number.POSITIVE_INFINITY,
-      numOfKeysLimit: Number.POSITIVE_INFINITY,
-      depthOfLimit: Number.POSITIVE_INFINITY,
-    },
-  },
-}
-```
+Additional configuration is available through the `recordOptions` and `recordConsolePlugin` properties of the object exported by `config.js`, which are preset to reasonable defaults. Detailed documentation for `recordOptions` and `recordConsolePlugin` is available on the rrweb GitHub page, specifically [here](https://github.com/rrweb-io/rrweb/blob/master/guide.md#options) and [here](https://github.com/rrweb-io/rrweb/blob/master/docs/recipes/console.md#console-recorder-and-replayer), respectively.
