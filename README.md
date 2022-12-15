@@ -8,11 +8,11 @@
 
 ### Recording Agent for Bard
 
-Bardrr is a node.js package for recording browser events for the bard session replay and analysis tool.
+Bardrr is a node.js package for recording browser events for the Bard session replay and analysis tool.
 
 ### Installation
 
-This is a Node.js module available through the npm registry. Installation is done using the npm install command:
+This is a Node.js package available through the npm registry. Installation is done using the npm install command:
 
 ```
 $ npm install bardrr
@@ -20,7 +20,11 @@ $ npm install bardrr
 
 ### Initializing the Agent
 
-In order to use the bardrr agent to collect browser events, you must import the Agent from bardrr. Then in your app you need to call the `start` method on an instance of the agent, passing in an object with an `appName`, `endpoint` and `MAX_IDLE_TIME`. `endpoint` is where the agent will send the events. `MAX_IDLE_TIME` is the amount of idle time (in milliseconds) after which a session ends. Example:
+In order to use the bardrr Agent to collect browser events, you must import the Agent from bardrr. Then in your app, you need to call the `start` method on an instance of the Agent, passing in an object with an `appName`, `endpoint` and `MAX_IDLE_TIME`.
+
+- `appName` is the name of the application you're recording.
+- `endpoint` is where the Agent will send the events.
+- `MAX_IDLE_TIME` is the amount of idle time (in milliseconds) after which a session ends. Example:
 
 ```javascript
 import Agent from "bardrr";
@@ -34,7 +38,7 @@ new Agent().start({
 
 ### Custom Events
 
-To trigger and have the Agent handle a custom event you need to import the agent and call the static `handleCustomEvent` method on it with a custom event type passed in as an argument.
+Custom events allow Bard users to create queryable events from very specific user actions on their site. To trigger a custom event, you need to import the Agent and call the static `handleCustomEvent` method on it with a string as an argument. This string is the custom event's type, and is used to query the custom event in the Bard user interface.
 
 ```javascript
 import Agent from "bardrr";
