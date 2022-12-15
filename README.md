@@ -49,3 +49,7 @@ Agent.handleCustomEvent("myCustomEvent");
 ### Additional Configuration
 
 Additional configuration is available through the `recordOptions` and `recordConsolePlugin` properties of the object exported by `config.js`, which are preset to reasonable defaults. Detailed documentation for `recordOptions` and `recordConsolePlugin` is available on the rrweb GitHub page, specifically [here](https://github.com/rrweb-io/rrweb/blob/master/guide.md#options) and [here](https://github.com/rrweb-io/rrweb/blob/master/docs/recipes/console.md#console-recorder-and-replayer), respectively.
+
+## Website
+
+You can read more about our project [here](https://bard-rr.com/).
