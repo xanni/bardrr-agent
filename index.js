@@ -1,6 +1,7 @@
 "use strict";
 
 import * as rrweb from "rrweb";
+import { getRecordConsolePlugin } from '@rrweb/rrweb-plugin-console-record';
 import { v4 as uuidv4 } from "uuid";
 import config from "./config";
 
@@ -142,7 +143,7 @@ class Recorder {
     this.options = {
       ...config.recordOptions,
       emit: handleEvent,
-      plugins: [rrweb.getRecordConsolePlugin(config.recordConsolePlugin)],
+      plugins: [getRecordConsolePlugin(config.recordConsolePlugin)],
     };
     this.stop = null;
   }
